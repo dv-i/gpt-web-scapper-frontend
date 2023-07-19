@@ -16,13 +16,21 @@ export default function Example(): JSX.Element {
 	const [showError, setshowError] = useState(false);
 	async function handleOnClick(): Promise<void> {
 		if (validateURL(URL)) {
-			const result = await fetch("http://localhost:3000/scrape", {
+			const resultStream = await fetch("http://localhost:3000/scrape", {
 				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
 				body: JSON.stringify({
 					pageURL: URL,
 				}),
 			});
-			console.log(result);
+			const resultJson: string = await resultStream.json();
+			alert(
+				`Open this link in a new tab or browser to see your new page - file://${resultJson}`
+			);
+			window.open(resultJson, "_blank");
 		} else {
 			setshowError(true);
 		}
