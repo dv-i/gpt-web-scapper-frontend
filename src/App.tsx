@@ -14,9 +14,15 @@ function validateURL(url: string | undefined): boolean {
 export default function Example(): JSX.Element {
 	const [URL, setURL] = useState<string>();
 	const [showError, setshowError] = useState(false);
-	function handleOnClick(): void {
+	async function handleOnClick(): Promise<void> {
 		if (validateURL(URL)) {
-			alert(URL);
+			const result = await fetch("http://localhost:3000/scrape", {
+				method: "POST",
+				body: JSON.stringify({
+					pageURL: URL,
+				}),
+			});
+			console.log(result);
 		} else {
 			setshowError(true);
 		}
@@ -95,7 +101,10 @@ export default function Example(): JSX.Element {
 											<button
 												type="button"
 												className="flex gap-2 w-full justify-center rounded-md ring-4 ring-indigo-300 bg-indigo-500 px-6 py-3 font-medium text-white shadow hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2"
-												onClick={handleOnClick}
+												onClick={() => {
+													// eslint-disable-next-line @typescript-eslint/no-floating-promises
+													handleOnClick();
+												}}
 											>
 												Transform
 												<CubeTransparentIcon className="h-6 w-6" />
