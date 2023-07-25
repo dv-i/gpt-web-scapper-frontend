@@ -1,5 +1,9 @@
-import React, { useState } from "react";
-import { CubeTransparentIcon } from "@heroicons/react/24/outline";
+import React, { useEffect, useState } from "react";
+import {
+	CubeTransparentIcon,
+	ArrowDownTrayIcon,
+} from "@heroicons/react/24/outline";
+import { BASE_API_URL } from "./constants";
 
 function validateURL(url: string | undefined): boolean {
 	if (url === undefined) return false;
@@ -11,12 +15,38 @@ function validateURL(url: string | undefined): boolean {
 	return urlPattern.test(url);
 }
 
+function extractDomain(url: string): string {
+	// Remove the protocol (http:// or https://) from the URL
+	let domain = url.replace(/(^\w+:|^)\/\//, "");
+
+	// Remove anything after the first forward slash (/)
+	domain = domain.split("/")[0];
+
+	// Remove port number if present
+	domain = domain.split(":")[0];
+
+	// Remove 'www' subdomain if present
+	if (domain.startsWith("www.")) {
+		domain = domain.slice(4);
+	}
+
+	return domain;
+}
+
 export default function Example(): JSX.Element {
 	const [URL, setURL] = useState<string>();
 	const [showError, setshowError] = useState(false);
-	async function handleOnClick(): Promise<void> {
+	const [modifiedPageFileName, setModifiedPageFileName] = useState("");
+	const [isDownloadButtonDisabled, setIsDownloadButtonDisabled] =
+		useState(true);
+	const [isLoading, setIsLoading] = useState(false);
+
+	const [responseBlob, setResponseBlob] = useState<Blob>();
+	const handleOnClick = async (): Promise<void> => {
+		setIsLoading(true);
+
 		if (validateURL(URL)) {
-			const resultStream = await fetch("http://localhost:3000/scrape", {
+			const resultStream = await fetch(`${BASE_API_URL}/scrape`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -24,17 +54,81 @@ export default function Example(): JSX.Element {
 				},
 				body: JSON.stringify({
 					pageURL: URL,
+					modifiedPageFileName: modifiedPageFileName,
 				}),
 			});
-			const resultJson: string = await resultStream.json();
-			alert(
-				`Open this link in a new tab or browser to see your new page - file://${resultJson}`
-			);
-			window.open(resultJson, "_blank");
 		} else {
 			setshowError(true);
+			setIsLoading(false);
+			setIsDownloadButtonDisabled(true);
 		}
-	}
+	};
+
+	useEffect(() => {
+		console.log(URL);
+		if (URL !== undefined && URL.length > 0) {
+			setModifiedPageFileName(
+				`${extractDomain(URL ?? "")}-${new Date().toISOString()}.mhtml`
+			);
+		}
+	}, [URL]);
+
+	useEffect(() => {
+		if (isLoading) {
+			console.log("here");
+			const interval = setInterval(async () => {
+				console.log("POLLING");
+				const response = await handleDownload();
+				if (response?.ok) {
+					console.log("EXITING POLL");
+					setIsDownloadButtonDisabled(false);
+					setIsLoading(false);
+					const blob = await response.blob();
+					setResponseBlob(blob);
+					clearInterval(interval);
+				}
+			}, 15000);
+			return () => {
+				clearInterval(interval);
+			};
+		}
+	}, [isLoading]);
+
+	const handleDownloadButtonClick = (): void => {
+		if (responseBlob) {
+			const url = window.URL.createObjectURL(responseBlob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = modifiedPageFileName;
+			a.click();
+			window.URL.revokeObjectURL(url);
+		} else {
+			console.error("Failed to download file");
+		}
+	};
+
+	const handleDownload = async (): Promise<Response | undefined> => {
+		try {
+			console.log(
+				"Sending download request for - ",
+				modifiedPageFileName
+			);
+			const response = await fetch(`${BASE_API_URL}/download`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: JSON.stringify({
+					fileName: modifiedPageFileName,
+				}),
+			});
+
+			return response;
+		} catch (error) {
+			console.error("Error while downloading:", error);
+		}
+	};
 	return (
 		<div className="bg-white">
 			<header className="absolute inset-x-0 top-0 z-50">
@@ -116,6 +210,26 @@ export default function Example(): JSX.Element {
 											>
 												Transform
 												<CubeTransparentIcon className="h-6 w-6" />
+											</button>
+										</div>
+										<div className="mt-3 sm:ml-3 sm:mt-0">
+											<button
+												type="button"
+												disabled={
+													isDownloadButtonDisabled
+												}
+												className={
+													isDownloadButtonDisabled
+														? "flex gap-2 w-full justify-center rounded-md ring-4 ring-gray-300 bg-gray-500 px-6 py-3 font-medium text-white shadow focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+														: "flex gap-2 w-full justify-center rounded-md ring-4 ring-indigo-300 bg-indigo-500 px-6 py-3 font-medium text-white shadow hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2"
+												}
+												onClick={() => {
+													// eslint-disable-next-line @typescript-eslint/no-floating-promises
+													handleDownloadButtonClick();
+												}}
+											>
+												Download
+												<ArrowDownTrayIcon className="h-6 w-6" />
 											</button>
 										</div>
 									</div>
