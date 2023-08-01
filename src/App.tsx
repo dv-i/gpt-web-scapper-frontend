@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
-import {
-	CubeTransparentIcon,
-	ArrowDownTrayIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import { BASE_API_URL } from "./constants";
+import { Loader } from "./Loader";
+import ToastNotification, { ToastProps } from "./ToastNotification";
 
 function validateURL(url: string | undefined): boolean {
 	if (url === undefined) return false;
@@ -40,27 +39,38 @@ export default function Example(): JSX.Element {
 	const [isDownloadButtonDisabled, setIsDownloadButtonDisabled] =
 		useState(true);
 	const [isLoading, setIsLoading] = useState(false);
+	const [toast, setToast] = useState<ToastProps>();
 
 	const [responseBlob, setResponseBlob] = useState<Blob>();
 	const handleOnClick = async (): Promise<void> => {
 		setIsLoading(true);
 
 		if (validateURL(URL)) {
-			const resultStream = await fetch(`${BASE_API_URL}/scrape`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Accept: "application/json",
-				},
-				body: JSON.stringify({
-					pageURL: URL,
-					modifiedPageFileName: modifiedPageFileName,
-				}),
-			});
+			try {
+				const resultStream = await fetch(`${BASE_API_URL}/scrape`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Accept: "application/json",
+					},
+					body: JSON.stringify({
+						pageURL: URL,
+						modifiedPageFileName: modifiedPageFileName,
+					}),
+				});
+				console.log(resultStream);
+			} catch (err) {
+				console.error(err);
+			}
 		} else {
 			setshowError(true);
 			setIsLoading(false);
 			setIsDownloadButtonDisabled(true);
+			setToast({
+				visible: true,
+				title: "Could not validate URL",
+				type: "error",
+			});
 		}
 	};
 
@@ -75,7 +85,7 @@ export default function Example(): JSX.Element {
 
 	useEffect(() => {
 		if (isLoading) {
-			console.log("here");
+			setIsDownloadButtonDisabled(true);
 			const interval = setInterval(async () => {
 				console.log("POLLING");
 				const response = await handleDownload();
@@ -85,6 +95,12 @@ export default function Example(): JSX.Element {
 					setIsLoading(false);
 					const blob = await response.blob();
 					setResponseBlob(blob);
+					setToast({
+						visible: true,
+						title: "File available to download",
+						type: "success",
+						duration: 10000,
+					});
 					clearInterval(interval);
 				}
 			}, 15000);
@@ -131,6 +147,7 @@ export default function Example(): JSX.Element {
 	};
 	return (
 		<div className="bg-white">
+			<ToastNotification toast={toast} setToast={setToast} />
 			<header className="absolute inset-x-0 top-0 z-50">
 				<nav
 					className="flex items-center justify-between p-6 lg:px-8"
@@ -209,7 +226,7 @@ export default function Example(): JSX.Element {
 												}}
 											>
 												Transform
-												<CubeTransparentIcon className="h-6 w-6" />
+												<Loader visible={isLoading} />
 											</button>
 										</div>
 										<div className="mt-3 sm:ml-3 sm:mt-0">
