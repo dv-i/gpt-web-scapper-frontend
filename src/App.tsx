@@ -34,6 +34,7 @@ function extractDomain(url: string): string {
 
 export default function Example(): JSX.Element {
 	const [URL, setURL] = useState<string>();
+	const [prompt, setPrompt] = useState<string>();
 	const [showError, setshowError] = useState(false);
 	const [modifiedPageFileName, setModifiedPageFileName] = useState("");
 	const [isDownloadButtonDisabled, setIsDownloadButtonDisabled] =
@@ -56,6 +57,7 @@ export default function Example(): JSX.Element {
 					body: JSON.stringify({
 						pageURL: URL,
 						modifiedPageFileName: modifiedPageFileName,
+						prompt: prompt,
 					}),
 				});
 				console.log(resultStream);
@@ -197,6 +199,24 @@ export default function Example(): JSX.Element {
 									action="#"
 									className="sm:mx-auto sm:max-w-xl lg:mx-0"
 								>
+									<div className="min-w-0 flex-1 pb-5">
+										<label
+											htmlFor="prompt"
+											className="sr-only"
+										>
+											Prompt
+										</label>
+										<input
+											id="prompt"
+											type="prompt"
+											placeholder="Enter prompt"
+											className="block w-full rounded-md ring-4 ring-indigo-500 border-indigo-500 px-4 py-3 text-base text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-offset-2 "
+											value={prompt}
+											onChange={(_) => {
+												setPrompt(_.target.value);
+											}}
+										/>
+									</div>
 									<div className="sm:flex">
 										<div className="min-w-0 flex-1">
 											<label
@@ -214,6 +234,7 @@ export default function Example(): JSX.Element {
 												onChange={(_) => {
 													setURL(_.target.value);
 												}}
+												required={true}
 											/>
 										</div>
 										<div className="mt-3 sm:ml-3 sm:mt-0">
